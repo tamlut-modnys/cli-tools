@@ -5,6 +5,7 @@
     %eth-watcher
     %hood
     %herm
+    %grader
     %lens
     %ping
     %spider

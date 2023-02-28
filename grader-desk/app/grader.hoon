@@ -1,5 +1,5 @@
 /-  *grader
-/+  verb, dbug, default-agent, mip
+/+  verb, dbug, default-agent, *mip
 ::
 |%
 ::
@@ -33,9 +33,7 @@
 ++  on-init
 ^-  (quip card _this)
 ~>  %bout.[0 '%mine +on-init']
-=^  cards  state
-    abet:init:eng
-[cards this]
+`this
 ::
 ++  on-save
 ^-  vase
@@ -55,20 +53,20 @@
 |=  [mar=mark vaz=vase]
 ~>  %bout.[0 '%mine +on-poke']
 ^-  (quip card _this)
-?+    mar  (on-poke:default mar vaz)
+?+    mar  (on-poke:def mar vaz)
     %grader-action
-  =/  act  !<(action vase)
+  =/  act  !<(action vaz)
   ?-    -.act
       %enroll
-    ~&  "Student enrolled successfully"
-    `this(enrl ~(put in enrl stud.act))
+    ~&  "student enrolled successfully"
+    `this(enrl (~(put in enrl) stdt.act))
       %unenroll
-    ?.  ~(has in enrl stud.act)
+    ?.  (~(has in enrl) stdt.act)
       ~&  "Specified student not found"
       `this
     ~&  "Student and their grade/answer records have been deleted"
-    `this(enrl ~(del in enrl stud.act), grbk ~(del in grbk stud.act), anbk ~(del in anbk stud.act))
-    ::  [%load-rubric path]    :: `refr`
+    `this(enrl (~(del in enrl) stdt.act), grbk (~(del in grbk) stdt.act), anbk (~(del in anbk) stdt.act))
+    ::  [%load-rubric path]    :: `refr` -- uses a thread
     ::  [%load-stud path]      :: load a single student's answers (check for compatibility)
     ::  [%load-studs path]     :: load all students in a given directory
     ::  [%grade stud quid]  :: `?`
@@ -76,71 +74,104 @@
     ::  [%grade-s stud]   :: `(map quid ?)`  ->  ++add-question-results
     ::  [%grade-hw homw]
     ::  [%grade-all *]
+  ==
+==
 ++  on-peek
 |=  =path
 ~>  %bout.[0 '%mine +on-peek']
 ^-  (unit (unit cage))
-?+    path  (on-peek:default path)
+?+    path  (on-peek:def path)
+  ::  return list of enrolled students
+  ::
     [%x %enrollment ~]
-  ``grader-query+!>(`query`[%enrollment enrl])
+  ``noun+!>(enrl)
+  ::  list of students that have completed question
+  ::
     [%x %question @ @ ~]
   =/  =homw  (slav %tas i.t.t.path)
   =/  =ques  (slav %ud i.t.t.t.path)
-  =/  students=(list stud)
+  =/  students=(list stdt)
+  ::  just return students list
+  ::
   %+  turn
+    ^-  (list [x=stdt y=quid v=answ])
+    ::  skim list for non-null answer and quid match
+    ::
     %+  skim
-      ~(tap bi:mip anbk)
-    |=(a=[=stud =quid =answ] &(!=(answ ~) =(quid [homw ques])))
-  |=(a=[=stud =quid =answ] stud)
-  ``grader-query+!>(`query`[%question students])
+    ^-  (list [x=stdt y=quid v=answ])
+      ::  convert map to list
+      ::
+      ~(tap bi anbk)
+    |=(a=[x=stdt y=quid v=answ] &(!=(v.a ~) =(y.a [homw ques])))
+  |=(a=[x=stdt y=quid v=answ] x.a)
+  ``noun+!>(students)
+  ::  list of students that have completed homework
+  ::
     [%x %homework @ ~]
   =/  homework=homw  (slav %tas i.t.t.path)
-  =/  students=(list stud)
-  ::  take a map of students to loobean, and convert to a list of students with yes
-  ::
-  %+  skim
-    %~  tap  by
-    %-  ~(run by anbk)
-    ::  convert the inner map to a yes or no of whether the student finished all questions in a hw
+  =/  students=(list stdt)
+  %+  turn
+    ::  take a map of students to loobean, and convert to a list of students with yes
     ::
-    |=  a=*(map quid answ)
-    ^-  ?(%.y %.n)
-    ::  check if all questions in homework are done
-    ::
-    %+  levy
-      ::  filter for particular homework
+    %+  skim
+      ^-  (list [p=stdt q=?(%.y %.n)])
+      %~  tap  by
+      ^-  (map stdt ?(%.y %.n))
+      %-  ~(run by anbk)
+      ::  convert the inner map to a yes or no of whether the student finished all questions in a hw
       ::
-      %+  skim
-        ~(tap by a)
-      |=(b=[p=quid q=answ] =(homw.p homework))
-    |=(b=[p=quid q=answ] !=(q ~))
-  |=(a=[p=stud q=?(%.y %.n)] q.a)
-  ``grader-query+!>(`query`[%question students])
+      |=  a=(map quid answ)
+      ^-  ?(%.y %.n)
+      ::  check if all questions in homework are done
+      ::
+      %+  levy
+        ::  filter for particular homework
+        ::
+        %+  skim
+          ~(tap by a)
+        |=(b=[p=quid q=answ] =(-.p.b homework))
+      |=(b=[p=quid q=answ] !=(q.b ~))
+    |=(a=[p=stdt q=?(%.y %.n)] q.a)
+  |=(a=[p=stdt q=?(%.y %.n)] p.a)
+  ``noun+!>(students)
+  ::  return a single grade
+  ::
     [%x %report @ @ @ ~]
-  =/  =stud  (slav %tas i.t.t.path)
-  =/  =homw  (slav %ud i.t.t.t.path)
-  =/  =ques (slav %ud i.t.t.t.t.path)
-  ``grader-query+!>(`query`[%report (~(get bi:mip grbk) stud [homw ques])])
+  =/  =stdt  (slav %p i.t.t.path)
+  =/  =homw  (slav %tas i.t.t.t.path)
+  =/  =ques  (slav %ud i.t.t.t.t.path)
+  ``noun+!>((~(get bi grbk) stdt [homw ques]))
+  ::  return grades over students for a question
+  ::
     [%x %report-q @ @ ~]
   =/  =homw  (slav %tas i.t.t.path)
-  =/  =ques (slav %ud i.t.t.t.path)
-  =/  students=(map stud scor)
+  =/  =ques  (slav %ud i.t.t.t.path)
+  =/  students=(map stdt scor)
   %-  ~(run by grbk)
-  |=(a=*(map quid answer) (~(got by a) [homw ques]))
-  ``grader-query+!>(`query`[%report-q students])
+  |=(a=(map quid scor) (~(got by a) [homw ques]))
+  ``noun+!>(students)
+  ::  grades for a single student
+  ::
     [%x %report-s @ ~]
-  =/  =stud  (slav %tas i.t.t.path)
-  ``grader-query+!>(`query`[%report-s (~(get by grbk) stud)])
+  =/  =stdt  (slav %tas i.t.t.path)
+  ``noun+!>((~(get by grbk) stdt))
+  ::  grades for a single student and homework
+  ::
     [%x %report-sh @ @ ~]
-  =/  =stud  (slav @ud i.t.t.path)
-  =/  =homw (slav @ud i.t.t.t.path)
-  =/  result=*(map quid scor)
+  =/  =stdt  (slav %p i.t.t.path)
+  =/  =homw  (slav %ud i.t.t.t.path)
+  =/  result=(list [p=quid q=scor])
+  ?~  (~(get by grbk) stdt)
+    ~
   %+  skim
+    ^-  (list [p=quid q=scor])
     %~  tap  by
-    (~(get by grbk) stud)
-  |=(a=[p=quid q=scor] =(homw.p homw))
-  ``grader-query+!>(`query`[%report-sh results])
-    ::  [grades ]
+    ^-  (map quid scor)
+    (need (~(get by grbk) stdt))
+  |=(a=[p=quid q=scor] =(-.p.a homw))
+  ``noun+!>(result)
+    ::  [grades ] just pass as a urbit csv?
+==
 ++  on-agent
 |=  [wir=wire sig=sign:agent:gall]
 ~>  %bout.[0 '%mine +on-agent']
