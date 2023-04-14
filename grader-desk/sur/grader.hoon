@@ -9,14 +9,16 @@
 |%
 +$  stdt  @p            :: student @p
 +$  homw  @tas          :: identifier of a particular homework
-+$  ques  @ud           :: question number in a homework
-+$  answ  (unit cord)
++$  ques  @tas           :: question number in a homework
++$  answ  (unit cord)   :: student answer
 +$  scor  (unit @ud)    :: student's score on question, ~ if unsubmitted/ungraded
-+$  quid  [homw ques]    :: question identifier: homework, question
++$  cmnt  (unit cord)   :: instructor comment
++$  quid  [homw ques]   :: question identifier: homework, question
 +$  atyp  ?(%text %text-human %hoon)  :: answer types
-+$  enrl  (set stdt)  :: students enrolled in a class
-+$  rubr  (map quid [qu=cord max=@ud typ=atyp ans=cord])   :: rubric containing question text, maximum score, answer type, and correct/sample answer
-+$  grbk  (mip stdt quid scor)  :: gradebook storing student scores by question
++$  enrl  (set stdt)    :: students enrolled in a class
++$  rubr-entry  [qu=cord max=@ud typ=atyp ans=cord]
++$  rubr  (mip homw ques rubr-entry)   :: rubric containing question text, maximum score, answer type, and correct/sample answer
++$  grbk  (mip stdt quid [scor cmnt])  :: gradebook storing student scores by question
 +$  anbk  (mip stdt quid answ)  :: store of student answers
 
 +$  query
@@ -35,8 +37,8 @@
       [%enroll =stdt]
       [%unenroll =stdt]
       ::[%load-rubric =path]    :: `refr`
-      ::[%load-stud =path]      :: load a single student's answers (check for compatibility)
-      ::[%load-studs =path]     :: load all students in a given directory
+      ::[%load-stdt =path]      :: load a single student's answers (check for compatibility)
+      ::[%load-stdts =path]     :: load all students in a given directory
       ::[%grade =stdt =quid]  :: `?`
       ::[%grade-q =quid]   :: `(map stud ?)`  ->  ++add-student-results
       ::[%grade-s =stdt]   :: `(map quid ?)`  ->  ++add-question-results
