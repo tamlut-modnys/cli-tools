@@ -1,4 +1,6 @@
 /-  *grader
+/+  csv
+/*  csv-mark  %as-mark /mar/csv/hoon
 /+  verb, dbug, default-agent, *mip
 ::
 |%
@@ -26,6 +28,7 @@
 ::
 ^-  agent:gall
 ::
+=<
 |_  =bowl:gall
 +*  this  .
     def  ~(. (default-agent this %|) bowl)
@@ -66,6 +69,15 @@
       `this
     ~&  "Student and their grade/answer records have been deleted"
     `this(enrl (~(del in enrl) stdt.act), grbk (~(del in grbk) stdt.act), anbk (~(del in anbk) stdt.act))
+      %load-rubric
+    =/  rubric-csv  .^((list(list @t)) %cx /===/path.act/csv)
+    =/  new-rubr
+    |-
+      ?~  csv  new-rubr
+      $(new-rubr (process-rubric-entry new-rubr i.csv), csv t.csv)
+    `this(rubr new-rubr)
+      %load-stdt
+      
     ::  [%load-rubric path]    :: `refr` -- uses a thread
     ::  [%load-stud path]      :: load a single student's answers (check for compatibility)
     ::  [%load-studs path]     :: load all students in a given directory
@@ -146,9 +158,9 @@
     [%x %report-q @ @ ~]
   =/  =homw  (slav %tas i.t.t.path)
   =/  =ques  (slav %ud i.t.t.t.path)
-  =/  students=(map stdt scor)
+  =/  students=(map stdt [scor cmnt])
   %-  ~(run by grbk)
-  |=(a=(map quid scor) (~(got by a) [homw ques]))
+  |=(a=(map quid [scor cmnt]) (~(got by a) [homw ques]))
   ``noun+!>(students)
   ::  grades for a single student
   ::
@@ -160,15 +172,15 @@
     [%x %report-sh @ @ ~]
   =/  =stdt  (slav %p i.t.t.path)
   =/  =homw  (slav %ud i.t.t.t.path)
-  =/  result=(list [p=quid q=scor])
+  =/  result=(list [p=quid q=[scor cmnt]])
   ?~  (~(get by grbk) stdt)
     ~
   %+  skim
-    ^-  (list [p=quid q=scor])
+    ^-  (list [p=quid q=[scor cmnt]])
     %~  tap  by
-    ^-  (map quid scor)
+    ^-  (map quid [scor cmnt])
     (need (~(get by grbk) stdt))
-  |=(a=[p=quid q=scor] =(-.p.a homw))
+  |=(a=[p=quid q=[scor cmnt]] =(-.p.a homw))
   ``noun+!>(result)
     ::  [grades ] just pass as a urbit csv?
 ==
@@ -197,4 +209,41 @@ on-fail:def
 ++  on-leave
 ~>  %bout.[0 '%mine +on-leave']
 on-leave:def
+--
+|%
+++  process-rubric-entry
+|=  [=rubr entry=(list @t)]
+^-  ^rubr
+=/  homw=@tas  
+  ?~  (slaw %tas (snag 0 entry))
+    ~&  "Malformed rubric entry, column 0, homework id"  !!
+  ?~  (need (slaw %tas (snag 0 entry)))
+    ~&  "Empty column 0, homework id" !!
+  (need (slaw %tas (snag 0 entry)))
+=/  ques=@ud  
+  ?~  (slaw %ud (snag 1 entry))
+    ~&  "Malformed rubric entry, column 1, question id"  !!
+  ?~  (need (slaw %tas (snag 1 entry)))
+    ~&  "Empty column 1, question id"  !!
+  (need (slaw %tas (snag 1 entry)))
+=/  qu=cord 
+  ?~  (snag 2 entry)
+    ~&  "Empty column 2, question text"  !!
+  (snag 2 entry)
+=/  max=@ud  
+  ?~  (slaw %ud (snag 3 entry))
+    ~&  "Malformed rubric entry, column 3, max score"  !!
+  ?~  (need (slaw %tas (snag 3 entry)))
+    "Empty column 3, max score"
+  (need (slaw %tas (snag 3 entry)))
+=/  typ=atyp 
+  ?~  (slaw %tas (snag 4 entry))
+    ~&  "Malformed rubric entry, column 3, answer type"  !!
+  =/  entry=%tas  (need (slaw %tas (snag 4 entry)))
+  ?. |(=(entry %text) =(entry %text-human) =(entry %hoon))
+    ~&  "Malformed rubric entry, column 3, answer type"  !!
+  entry
+=/  ans=cord  (snag 5 entry)
+(~(put by rubr) [homw ques] [qu max typ])
+
 --
